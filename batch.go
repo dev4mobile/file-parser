@@ -11,8 +11,8 @@ import (
 )
 
 type ImageJob struct {
-	InputPath    string
-	OutputPath   string
+	InputPath     string
+	OutputPath    string
 	WatermarkType string // "visibleText", "visibleImage", "invisible"
 
 	// Options for visible text watermark
@@ -31,6 +31,10 @@ type ImageJob struct {
 
 	// Options for invisible watermark
 	InvisibleData string
+
+	// Options for steganography blind watermark
+	SteganoData     string
+	SteganoPassword string
 }
 
 // worker processes image jobs from the jobs channel.
@@ -77,6 +81,19 @@ func worker(id int, jobs <-chan ImageJob, wg *sync.WaitGroup) {
 				fmt.Printf("Worker %d: Error embedding invisible watermark in %s: %v\n", id, job.InputPath, err)
 				continue
 			}
+		case "steganoBlind":
+			if job.SteganoData == "" {
+				fmt.Printf("Worker %d: Error for %s - SteganoData cannot be empty for steganoBlind type\n", id, job.InputPath)
+				continue
+			}
+			watermarkBytes := []byte(job.SteganoData)
+
+			outputImage, err = EmbedSteganoWatermark(baseImage, watermarkBytes, job.SteganoPassword)
+			if err != nil {
+				fmt.Printf("Worker %d: Error applying stegano blind watermark to %s: %v\n", id, job.InputPath, err)
+				continue
+			}
+			// outputImage is now populated and will be saved by existing logic.
 		default:
 			fmt.Printf("Worker %d: Unknown watermark type '%s' for job %s\n", id, job.WatermarkType, job.InputPath)
 			continue

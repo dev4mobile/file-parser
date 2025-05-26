@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
 	// Assuming pdfparser package is in the same module or accessible
 	// If main is in 'package main', and other code in 'package pdfparser'
 	// we might need to import the pdfparser package if we directly call its functions here for verification.
@@ -20,6 +21,8 @@ import (
 	// For ExtractInvisibleWatermark, we'd need to ensure it's callable.
 	// If pdfparser is a separate package:
 	"pdfparser" // Make sure this import path is correct based on your go.mod
+
+	"github.com/disintegration/imaging"
 )
 
 const (
@@ -107,10 +110,10 @@ func setupTestDirs(t *testing.T) (inputDir string, outputDir string) {
 // TestCLI_VisibleText_SingleFile tests visible text watermark on a single file.
 func TestCLI_VisibleText_SingleFile(t *testing.T) {
 	inputDir, outputDir := setupTestDirs(t)
-	
+
 	// Adjust source path based on actual location of testdata relative to test execution
 	// If main_cli_test.go is in the project root with main.go, and testdata is also in root:
-	baseImageSourcePath := filepath.Join("testdata", "base_image.png") 
+	baseImageSourcePath := filepath.Join("testdata", "base_image.png")
 	checkSkipOrFatalCLI(t, baseImageSourcePath) // Ensure testdata/base_image.png exists
 	if _, err := os.Stat(commonSystemFontCLI); os.IsNotExist(err) {
 		t.Skipf("Skipping test: common font not found at %s", commonSystemFontCLI)
@@ -159,11 +162,10 @@ func TestCLI_VisibleImage_Directory(t *testing.T) {
 	copyTestFile(t, baseImageSourcePath, inputDir, "img2.jpg") // Assuming jpg is also processed
 	copiedLogoPath := copyTestFile(t, logoSourcePath, inputDir, "logo.png")
 
-
 	args := []string{
 		"watermark", "image",
-		"-input", inputDir,    // Input is a directory
-		"-output", outputDir,   // Output is a directory
+		"-input", inputDir, // Input is a directory
+		"-output", outputDir, // Output is a directory
 		"-type", "visible",
 		"-visible.type", "image",
 		"-visible.imagepath", copiedLogoPath,
@@ -244,28 +246,28 @@ func TestCLI_MissingRequiredFlags(t *testing.T) {
 		expectedErr bool
 	}{
 		{
-			name: "Missing input and type",
-			args: []string{"watermark", "image", "-output", filepath.Join(outputDir, "out.png")},
+			name:        "Missing input and type",
+			args:        []string{"watermark", "image", "-output", filepath.Join(outputDir, "out.png")},
 			expectedErr: true,
 		},
 		{
-			name: "Missing type",
-			args: []string{"watermark", "image", "-input", "dummy.png", "-output", filepath.Join(outputDir, "out.png")},
+			name:        "Missing type",
+			args:        []string{"watermark", "image", "-input", "dummy.png", "-output", filepath.Join(outputDir, "out.png")},
 			expectedErr: true,
 		},
 		{
-			name: "Visible text type missing text and font",
-			args: []string{"watermark", "image", "-input", "dummy.png", "-output", filepath.Join(outputDir, "out.png"), "-type", "visible", "-visible.type", "text"},
+			name:        "Visible text type missing text and font",
+			args:        []string{"watermark", "image", "-input", "dummy.png", "-output", filepath.Join(outputDir, "out.png"), "-type", "visible", "-visible.type", "text"},
 			expectedErr: true,
 		},
 		{
-			name: "Visible image type missing imagepath",
-			args: []string{"watermark", "image", "-input", "dummy.png", "-output", filepath.Join(outputDir, "out.png"), "-type", "visible", "-visible.type", "image"},
+			name:        "Visible image type missing imagepath",
+			args:        []string{"watermark", "image", "-input", "dummy.png", "-output", filepath.Join(outputDir, "out.png"), "-type", "visible", "-visible.type", "image"},
 			expectedErr: true,
 		},
 		{
-			name: "Invisible type missing data",
-			args: []string{"watermark", "image", "-input", "dummy.png", "-output", filepath.Join(outputDir, "out.png"), "-type", "invisible"},
+			name:        "Invisible type missing data",
+			args:        []string{"watermark", "image", "-input", "dummy.png", "-output", filepath.Join(outputDir, "out.png"), "-type", "invisible"},
 			expectedErr: true,
 		},
 	}
@@ -273,9 +275,8 @@ func TestCLI_MissingRequiredFlags(t *testing.T) {
 	// Create a dummy input file for tests that require -input to pass initial parsing stages
 	// This file won't actually be processed as the commands are expected to fail before that.
 	dummyInputPath := filepath.Join(t.TempDir(), "dummy_input.png")
-	dummyImg := image.NewNRGBA(image.Rect(0,0,10,10))
+	dummyImg := image.NewNRGBA(image.Rect(0, 0, 10, 10))
 	imaging.Save(dummyImg, dummyInputPath)
-
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -306,7 +307,7 @@ func TestCLI_PdfCommand(t *testing.T) {
 	// For this test, we need a dummy PDF. Since we can't create one,
 	// this test will be very basic, checking if the command runs and prints usage/error for non-PDF.
 	// If a test PDF existed in testdata, we'd use it.
-	
+
 	t.Run("PdfCommand_NoFile", func(t *testing.T) {
 		cmd := exec.Command("./"+cliAppName, "pdf")
 		output, err := cmd.CombinedOutput()
@@ -332,17 +333,17 @@ func TestCLI_PdfCommand(t *testing.T) {
 		// The pdf command in main.go prints "Error: Please provide a valid .pdf file."
 		// but doesn't os.Exit(1). So `err` from `cmd.CombinedOutput()` will be nil if executable ran.
 		if !strings.Contains(string(output), "Error: Please provide a valid .pdf file.") {
-			 t.Errorf("Expected error message for non-PDF file, got:\n%s", string(output))
+			t.Errorf("Expected error message for non-PDF file, got:\n%s", string(output))
 		}
 	})
 
-    // If a test.pdf was available:
+	// If a test.pdf was available:
 	// testPdfPath := filepath.Join("testdata", "test_document.pdf")
 	// checkSkipOrFatalCLI(t, testPdfPath) // Skip if not found
-    // cmd := exec.Command("./"+cliAppName, "pdf", testPdfPath)
-    // output, err := cmd.CombinedOutput()
-    // if err != nil {
-    //    t.Fatalf("pdf command failed for %s: %v\nOutput:\n%s", testPdfPath, err, string(output))
-    // }
-    // Assert output contains "Extracted text:" or specific content
+	// cmd := exec.Command("./"+cliAppName, "pdf", testPdfPath)
+	// output, err := cmd.CombinedOutput()
+	// if err != nil {
+	//    t.Fatalf("pdf command failed for %s: %v\nOutput:\n%s", testPdfPath, err, string(output))
+	// }
+	// Assert output contains "Extracted text:" or specific content
 }

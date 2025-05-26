@@ -30,7 +30,6 @@ func TestExtractTextFromPDF_Success(t *testing.T) {
 	normalizedExtractedText := strings.TrimSpace(strings.ReplaceAll(extractedText, "\n", " "))
 	normalizedExpectedText := strings.TrimSpace(strings.ReplaceAll(expectedText, "\n", " "))
 
-
 	// For now, we'll check if the expected text is contained within the extracted text.
 	// This is a more robust check against minor formatting differences from pdfcpu.
 	if !strings.Contains(normalizedExtractedText, normalizedExpectedText) {

@@ -117,7 +117,10 @@ func TestApplyTextWatermark(t *testing.T) {
 		}
 	})
 
-	opacities := []struct { name string; val float64 }{ {"Opaque", 1.0}, {"SemiTransparent", 0.5}, {"Transparent", 0.0} }
+	opacities := []struct {
+		name string
+		val  float64
+	}{{"Opaque", 1.0}, {"SemiTransparent", 0.5}, {"Transparent", 0.0}}
 	t.Run("DifferentOpacities", func(t *testing.T) {
 		for _, op := range opacities {
 			t.Run(op.name, func(t *testing.T) {
@@ -129,7 +132,6 @@ func TestApplyTextWatermark(t *testing.T) {
 		}
 	})
 }
-
 
 func TestApplyImageWatermark(t *testing.T) {
 	baseImagePath := filepath.Join("testdata", "base_image.png")
@@ -163,7 +165,7 @@ func TestApplyImageWatermark(t *testing.T) {
 			t.Error("ApplyImageWatermark() with invalid watermark path expected error, got nil")
 		}
 	})
-	
+
 	positions := []string{"TopLeft", "BottomRight", "Center"}
 	t.Run("DifferentPositions", func(t *testing.T) {
 		for _, pos := range positions {
@@ -176,7 +178,10 @@ func TestApplyImageWatermark(t *testing.T) {
 		}
 	})
 
-	opacities := []struct { name string; val float64 }{ {"Opaque", 1.0}, {"SemiTransparent", 0.5}, {"Transparent", 0.0} }
+	opacities := []struct {
+		name string
+		val  float64
+	}{{"Opaque", 1.0}, {"SemiTransparent", 0.5}, {"Transparent", 0.0}}
 	t.Run("DifferentOpacities", func(t *testing.T) {
 		for _, op := range opacities {
 			t.Run(op.name, func(t *testing.T) {
@@ -236,7 +241,7 @@ func TestInvisibleWatermarkingCycle(t *testing.T) {
 			// but this is not guaranteed.
 			if tc.imageFormat == "jpeg" {
 				// t.Logf("Note: Steganography on JPEGs is inherently unreliable due to lossy compression. This test may fail.")
-                // Let's try, but be aware it might fail not due to code error but format limitations.
+				// Let's try, but be aware it might fail not due to code error but format limitations.
 			}
 
 			extractedMessage, errExtract := ExtractInvisibleWatermark(imgData)

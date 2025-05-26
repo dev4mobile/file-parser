@@ -1,12 +1,14 @@
 package pdfparser
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/color"
 	"strconv"
 	"strings"
 
+	"github.com/disintegration/imaging"
 	"github.com/fogleman/gg"
 )
 
@@ -80,7 +82,6 @@ func ApplyTextWatermark(baseImage image.Image, text string, fontPath string, fon
 	// Normalize to [0, 255] for RGBA struct and apply opacity to alpha
 	finalA := uint8(float64(a>>8) * opacity)
 	dc.SetRGBA255(int(r>>8), int(g>>8), int(b>>8), int(finalA))
-
 
 	// Calculate text dimensions
 	textWidth, textHeight := dc.MeasureString(text)
@@ -219,7 +220,7 @@ func ApplyImageWatermark(baseImage image.Image, watermarkPath string, opacity fl
 	// imaging.Paste expects the destination to be a draw.Image.
 	// We create a new NRGBA image, draw the baseImage onto it, then use this as the destination for Paste.
 	// This ensures baseImage is not modified if it wasn't a draw.Image, and we return a new image.
-	
+
 	// Create a new drawable image (NRGBA) with the dimensions of the base image.
 	dst := image.NewNRGBA(baseImage.Bounds())
 

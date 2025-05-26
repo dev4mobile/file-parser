@@ -101,13 +101,17 @@ func handleWatermarkImageCommand() {
 	// Invisible Watermark Flags
 	invisibleData := imageWatermarkCmd.String("invisible.data", "", "Data to embed (if -type=invisible)")
 
+	// Stegano Watermark Flags
+	steganoData := imageWatermarkCmd.String("stegano.data", "", "Data to embed (if -type=stegano)")
+	steganoPassword := imageWatermarkCmd.String("stegano.password", "", "Optional password for stegano watermark")
+
 	// Custom usage message for the subcommand
 	imageWatermarkCmd.Usage = func() {
 		fmt.Fprintf(imageWatermarkCmd.Output(), "Usage: pdfparser watermark image -input <path> -output <path> -type <type> [options...]\n\n")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "Required flags:")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "  -input <path>      Input image file or directory.")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "  -output <path>     Output file or directory.")
-		fmt.Fprintln(imageWatermarkCmd.Output(), "  -type <type>       Watermark type: 'visible' or 'invisible'.")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "  -type <type>       Watermark type: 'visible', 'invisible', or 'stegano'.")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "\nOptions for all watermarks:")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "  -concurrency <num> Number of workers (default: number of CPUs).")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "\nOptions for -type=visible:")
@@ -124,10 +128,23 @@ func handleWatermarkImageCommand() {
 		fmt.Fprintln(imageWatermarkCmd.Output(), "    -visible.imagepath <path> Path to watermark image (required).")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "\nOptions for -type=invisible:")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "  -invisible.data <string>  Data to embed (required if -type=invisible).")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "\nOptions for -type=stegano:")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "  Embeds data into the image using LSB (Least Significant Bit) steganography.")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "  -stegano.data <string>    The string data to embed into the image. (Required)")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "  -stegano.password <string> Optional password. If provided, the data will be encrypted before embedding.")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "                           The same password is required for extraction.")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "  Recommendation: Use PNG format for the output image (-output <name>.png).")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "                  LSB steganography is sensitive to lossy compression (like JPEG).")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "  Robustness Note: This method includes error correction (Reed-Solomon codes).")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "                   However, LSB-based steganography is generally NOT resilient to")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "                   significant image manipulations (e.g., aggressive JPEG compression,")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "                   resizing, substantial cropping). Manage expectations accordingly.")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "\nExample (visible text watermark on a single file):")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "  pdfparser watermark image -input myimage.png -output watermarked.png -type visible -visible.type text -visible.text \"Confidential\" -visible.font /path/to/font.ttf")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "\nExample (invisible watermark on all images in a directory):")
 		fmt.Fprintln(imageWatermarkCmd.Output(), "  pdfparser watermark image -input ./img_folder -output ./out_folder -type invisible -invisible.data \"secret code\"")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "\nExample (steganography watermark on a single file, recommended PNG output):")
+		fmt.Fprintln(imageWatermarkCmd.Output(), "  pdfparser watermark image -input myimage.png -output stegano_watermarked.png -type stegano -stegano.data \"my secret data\" -stegano.password \"secure\"")
 
 	}
 
@@ -136,7 +153,6 @@ func handleWatermarkImageCommand() {
 		return
 	}
 	imageWatermarkCmd.Parse(os.Args[3:])
-
 
 	// Validate Inputs
 	if *input == "" || *output == "" || *typeFlag == "" {
@@ -180,8 +196,15 @@ func handleWatermarkImageCommand() {
 			return
 		}
 		jobWatermarkType = "invisible"
+	case "stegano":
+		if *steganoData == "" {
+			fmt.Println("Error: -stegano.data is required for stegano watermarks.")
+			imageWatermarkCmd.Usage()
+			return
+		}
+		jobWatermarkType = "steganoBlind"
 	default:
-		fmt.Printf("Error: Invalid -type: %s. Must be 'visible' or 'invisible'.\n", *typeFlag)
+		fmt.Printf("Error: Invalid -type: %s. Must be 'visible', 'invisible', or 'stegano'.\n", *typeFlag)
 		imageWatermarkCmd.Usage()
 		return
 	}
@@ -233,7 +256,7 @@ func handleWatermarkImageCommand() {
 			// If output doesn't exist and doesn't end with separator, assume it's a file path
 		}
 	}
-	
+
 	outputBase := *output
 	if outputIsDir {
 		if err := os.MkdirAll(*output, 0755); err != nil {
@@ -245,7 +268,6 @@ func handleWatermarkImageCommand() {
 		fmt.Println("Error: Output must be a directory when processing multiple input files.")
 		return
 	}
-
 
 	// Prepare ImageJobs
 	var jobs []pdfparser.ImageJob
@@ -262,6 +284,8 @@ func handleWatermarkImageCommand() {
 			HexColor:           *visibleColor,
 			WatermarkImagePath: *visibleImagePath,
 			InvisibleData:      *invisibleData,
+			SteganoData:        *steganoData,
+			SteganoPassword:    *steganoPassword,
 		}
 		if outputIsDir {
 			job.OutputPath = filepath.Join(outputBase, filepath.Base(inputFile))
@@ -282,7 +306,7 @@ func handleWatermarkImageCommand() {
 	// Dummy functions for testing CLI structure, replace with actual calls
 	// For now, just print the jobs
 	// fmt.Printf("Jobs to process: %+v\n", jobs)
-	
+
 	processingErrors := pdfparser.ProcessImagesConcurrently(jobs, *concurrency)
 
 	errorCount := 0
@@ -298,10 +322,9 @@ func handleWatermarkImageCommand() {
 			// errorCount++ // Commenting out as it's not reliable based on current worker design
 		}
 	}
-    // Count errors based on the returned slice from ProcessImagesConcurrently
-    // (which is currently empty but designed for future population)
-    errorCount = len(processingErrors)
-
+	// Count errors based on the returned slice from ProcessImagesConcurrently
+	// (which is currently empty but designed for future population)
+	errorCount = len(processingErrors)
 
 	fmt.Printf("\nProcessing summary:\n")
 	fmt.Printf("  Total images scheduled: %d\n", len(jobs))

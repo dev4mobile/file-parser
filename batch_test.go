@@ -1,7 +1,6 @@
 package pdfparser
 
 import (
-	"image"
 	_ "image/jpeg" // Register JPEG decoder for loading test images if any are jpeg
 	_ "image/png"  // Register PNG decoder
 	"os"
@@ -75,7 +74,7 @@ func TestProcessImagesConcurrently(t *testing.T) {
 	if numWorkers < 1 {
 		numWorkers = 1
 	}
-	
+
 	t.Logf("Starting ProcessImagesConcurrently with %d workers for %d jobs.", numWorkers, len(jobs))
 	processingErrors := ProcessImagesConcurrently(jobs, numWorkers)
 
